@@ -57,7 +57,7 @@ public class BurpExtender implements IBurpExtender, IMessageEditorTabFactory {
 
         this.callbacks = callbacks;
         helpers = callbacks.getHelpers();
-        callbacks.setExtensionName("JQ");
+        callbacks.setExtensionName("jq-modal");
 
         // UI
         callbacks.registerMessageEditorTabFactory(BurpExtender.this);
@@ -223,10 +223,31 @@ public class BurpExtender implements IBurpExtender, IMessageEditorTabFactory {
                 bodyOffset = responseInfo.getBodyOffset();
             }
 
-            // Save JSON input
+            // Save JSON input. Support multiple top-level JSON documents (NDJSON)
             try {
-                input = mapper.readTree(new String(Arrays.copyOfRange(content, bodyOffset, content.length)));
-            } catch (JsonProcessingException e) {
+                String body = new String(Arrays.copyOfRange(content, bodyOffset, content.length));
+                com.fasterxml.jackson.core.JsonParser parser = mapper.getFactory().createParser(body);
+                java.util.List<JsonNode> nodes = new ArrayList<JsonNode>();
+                // Read all root-level values from the parser
+                while (parser.nextToken() != null) {
+                    JsonNode node = mapper.readTree(parser);
+                    if (node == null)
+                        break;
+                    nodes.add(node);
+                }
+
+                if (nodes.size() == 0) {
+                    input = mapper.nullNode();
+                } else if (nodes.size() == 1) {
+                    input = nodes.get(0);
+                } else {
+                    com.fasterxml.jackson.databind.node.ArrayNode arr = mapper.createArrayNode();
+                    for (JsonNode n : nodes)
+                        arr.add(n);
+                    input = arr;
+                }
+
+            } catch (Exception e) {
                 filtersBar.setBackground(colorError);
                 outputArea.setText(e.getMessage().getBytes());
                 return;

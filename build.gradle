@@ -5,11 +5,14 @@ repositories {
 }
 
 dependencies {
-    compile 'net.portswigger.burp.extender:burp-extender-api:2.1'
-    compile 'com.fasterxml.jackson.core:jackson-annotations:2.11.3'
-    compile 'com.fasterxml.jackson.core:jackson-core:2.11.3'
-    compile 'com.fasterxml.jackson.core:jackson-databind:2.11.3'
-    compile 'net.thisptr:jackson-jq:1.0.0-preview.20191208'
+    // Burp provides the extender API at runtime; don't package it into the fat jar
+    compileOnly 'net.portswigger.burp.extender:burp-extender-api:2.1'
+
+    // Implementation dependencies (will be included in the fat jar)
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.11.3'
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.11.3'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.11.3'
+    implementation 'net.thisptr:jackson-jq:1.0.0-preview.20191208'
 }
 
 sourceSets {
@@ -20,12 +23,18 @@ sourceSets {
     }
 }
 
-targetCompatibility = '1.8'
-sourceCompatibility = '1.8'
+// Configure Java compatibility via the 'java' extension to avoid Gradle version issues
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
 
 
 task fatJar(type: Jar) {
-    baseName = project.name + '-all'
-    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    // single uber-jar with dependencies (excluding compileOnly items)
+    archiveBaseName.set(project.name + '-all')
+    // avoid failures when multiple dependency jars contain the same META-INF files
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
 }
