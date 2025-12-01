@@ -1,7 +1,7 @@
 # Burp JQ
 
 This is a Burp Extension to apply [jq](https://github.com/stedolan/jq) queries
-to JSON content from the HTTP message viewer.
+to JSON content from the HTTP message viewer. This has been modified to allow multiple JSON objects to be rendered, where before the JQ response window would only display the first overall JSON object. 
 
 ![Demo GIF](img/demo.gif)
 
